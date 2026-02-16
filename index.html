@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Marcenaria Ponto</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2962ff">
+<style>
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
+input,button,select,textarea{width:90%;padding:12px;margin:8px;border-radius:8px;border:none;font-size:16px;}
+button{background:#2962ff;color:white;font-weight:bold;}
+.card{background:#222;padding:15px;border-radius:10px;margin-top:15px;}
+.relatorioBox{background:#333;padding:10px;margin:8px;border-radius:8px;}
+.reacao{background:#444;width:auto;padding:6px 10px;margin:4px;}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid white;padding:8px;text-align:center;}
+</style>
+</head>
+<body>
+
+<h2>Marcenaria Ponto</h2>
+
+<div id="loginDiv">
+<input type="text" id="nomeUsuario" placeholder="Nome de usuário">
+<input type="password" id="senha" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+<button onclick="registrar()">Registrar</button>
+</div>
+
+<div id="funcionarioDiv" style="display:none;">
+<h3>Registrar Ponto</h3>
+
+<select id="tipo">
+<option>Entrada</option>
+<option>Saída</option>
+<option>Entrada Almoço</option>
+<option>Saída Almoço</option>
+</select>
+<button onclick="registrarPonto()">Registrar</button>
+
+<div class="card">
+<h3>Meus Pontos</h3>
+<div id="meusPontos"></div>
+</div>
+
+<div class="card">
+<h3>Meus Relatórios</h3>
+<div id="meusRelatorios"></div>
+</div>
+
+<div class="card">
+<h3>Aulas do Dia</h3>
+<table id="tabelaAulas">
+<tr><th>Horário</th><th>Aula</th></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Meu Calendário</h3>
+<input type="date" id="dataCalendario">
+<textarea id="textoCalendario" placeholder="Adicionar evento"></textarea>
+<button onclick="salvarCalendario()">Salvar</button>
+</div>
+
+</div>
+
+<br>
+<button onclick="abrirAdmin()">Painel Admin</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, updateDoc, doc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyDdXTeZrtinyhbymsdXrfAahyQeTQIT-xE",
+authDomain: "marcenaria-ponto.firebaseapp.com",
+projectId: "marcenaria-ponto",
+storageBucket: "marcenaria-ponto.firebasestorage.app",
+messagingSenderId: "493752930314",
+appId: "1:493752930314:web:89884d35b4bc89e394cff3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let usuarioAtual = null;
+
+window.registrar = async function(){
+const nome = document.getElementById("nomeUsuario").value;
+const senha = document.getElementById("senha").value;
+const email = prompt("Digite seu email");
+
+if(!nome || !senha || !email){alert("Preencha todos os campos"); return;}
+
+await addDoc(collection(db,"usuarios"),{
+nome:nome,
+email:email,
+senha:senha
+});
+alert("Usuário criado!");
+}
+
+window.login = async function(){
+const nome = document.getElementById("nomeUsuario").value;
+const senha = document.getElementById("senha").value;
+if(!nome || !senha){alert("Preencha os campos"); return;}
+
+const q = query(collection(db,"usuarios"),where("nome","==",nome));
+const snapshot = await getDocs(q);
+if(snapshot.empty){alert("Usuário não encontrado"); return;}
+
+let usuario=null;
+snapshot.forEach(docu=>{usuario=docu.data(); usuario.id=docu.id;});
+if(usuario.senha !== senha){alert("Senha incorreta"); return;}
+
+usuarioAtual = usuario;
+document.getElementById("loginDiv").style.display="none";
+document.getElementById("funcionarioDiv").style.display="block";
+carregarDados();
+carregarAulas();
+carregarCalendario();
+}
+
+async function carregarDados(){
+const q = query(collection(db,"pontos"),where("email","==",usuarioAtual.email));
+onSnapshot(q,(snapshot)=>{
+let html="";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`<p>${d.tipo} - ${d.data}</p>`;
+});
+meusPontos.innerHTML=html;
+});
+
+const qRel = query(collection(db,"relatorios"),where("email","==",usuarioAtual.email));
+onSnapshot(qRel,(snapshot)=>{
+let html="";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`
+<div class="relatorioBox">
+<p><b>${d.data}</b></p>
+<p>${d.texto}</p>
+<p>
+<button onclick="likeRelatorio('${doc.id}',${d.like||0})">👍 ${d.like||0}</button>
+<button onclick="dislikeRelatorio('${doc.id}',${d.dislike||0})">👎 ${d.dislike||0}</button>
+</p>
+</div>
+`;
+});
+meusRelatorios.innerHTML=html;
+});
+}
+
+window.likeRelatorio = async function(id,valor){ await updateDoc(doc(db,"relatorios",id),{like:valor+1}); }
+window.dislikeRelatorio = async function(id,valor){ await updateDoc(doc(db,"relatorios",id),{dislike:valor+1}); }
+
+window.registrarPonto = async function(){
+await addDoc(collection(db,"pontos"),{
+email:usuarioAtual.email,
+tipo:tipo.value,
+data:new Date().toLocaleString()
+});
+}
+
+function carregarAulas(){
+const hoje = new Date().toISOString().slice(0,10);
+const q = query(collection(db,"aulas"),where("data","==",hoje));
+onSnapshot(q,(snapshot)=>{
+let html="<tr><th>Horário</th><th>Aula</th></tr>";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`<tr><td>${d.horario}</td><td>${d.nome}</td></tr>`;
+});
+tabelaAulas.innerHTML=html;
+});
+}
+
+function carregarCalendario(){
+const q = query(collection(db,"calendario"),where("usuario","==",usuarioAtual.nome));
+onSnapshot(q,(snapshot)=>{
+snapshot.forEach(doc=>{
+// preenche com eventos se quiser
+});
+});
+}
+
+window.salvarCalendario = async function(){
+await addDoc(collection(db,"calendario"),{
+usuario:usuarioAtual.nome,
+data:dataCalendario.value,
+evento:textoCalendario.value
+});
+alert("Evento salvo!");
+}
+
+window.abrirAdmin = function(){
+const senhaAdmin = prompt("Senha do Admin:");
+if(senhaAdmin==="2026marc"){window.location.href="admin.html";}
+else{alert("Senha incorreta");}
+}
+
+</script>
+</body>
+</html>

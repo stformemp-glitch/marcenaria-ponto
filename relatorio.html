@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Criar Relatório</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
+input,textarea,button{width:90%;padding:12px;margin:8px;border-radius:8px;border:none;}
+button{background:#2962ff;color:white;font-weight:bold;}
+</style>
+</head>
+<body>
+
+<h2>Criar Relatório</h2>
+
+<input type="email" id="emailRelatorio" placeholder="Email do usuário">
+<input type="date" id="dataRelatorio">
+<textarea id="textoRelatorio" placeholder="Texto do relatório"></textarea>
+<button onclick="criarRelatorio()">Salvar</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyDdXTeZrtinyhbymsdXrfAahyQeTQIT-xE",
+authDomain: "marcenaria-ponto.firebaseapp.com",
+projectId: "marcenaria-ponto",
+storageBucket: "marcenaria-ponto.firebasestorage.app",
+messagingSenderId: "493752930314",
+appId: "1:493752930314:web:89884d35b4bc89e394cff3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.criarRelatorio = async function(){
+await addDoc(collection(db,"relatorios"),{
+email:emailRelatorio.value,
+data:dataRelatorio.value,
+texto:textoRelatorio.value,
+like:0,
+dislike:0
+});
+alert("Relatório criado!");
+}
+</script>
+</body>
+</html>

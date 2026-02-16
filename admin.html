@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Painel Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
+input,button,select,textarea{width:90%;padding:10px;margin:6px;border-radius:8px;border:none;}
+button{background:#2962ff;color:white;font-weight:bold;}
+.card{background:#222;padding:15px;border-radius:10px;margin-top:15px;}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid white;padding:8px;text-align:center;}
+</style>
+</head>
+<body>
+
+<h2>Painel Admin</h2>
+
+<button onclick="window.location.href='relatorio.html'">Criar Relatório</button>
+
+<div class="card">
+<h3>Histórico Geral</h3>
+<div id="historico"></div>
+</div>
+
+<div class="card">
+<h3>Todos os Relatórios</h3>
+<div id="listaRelatorios"></div>
+</div>
+
+<div class="card">
+<h3>Gerenciar Aulas</h3>
+
+<input type="date" id="dataAula">
+<input type="text" id="horarioAula" placeholder="Horário (08:00)">
+<input type="text" id="nomeAula" placeholder="Nome da Aula">
+<button onclick="criarAula()">Adicionar Aula</button>
+
+<table id="tabelaCompleta">
+<tr><th>Data</th><th>Horário</th><th>Aula</th><th>Ação</th></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Calendário dos Usuários</h3>
+<div id="listaCalendario"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyDdXTeZrtinyhbymsdXrfAahyQeTQIT-xE",
+authDomain: "marcenaria-ponto.firebaseapp.com",
+projectId: "marcenaria-ponto",
+storageBucket: "marcenaria-ponto.firebasestorage.app",
+messagingSenderId: "493752930314",
+appId: "1:493752930314:web:89884d35b4bc89e394cff3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.criarAula = async function(){
+await addDoc(collection(db,"aulas"),{
+data:dataAula.value,
+horario:horarioAula.value,
+nome:nomeAula.value
+});
+}
+
+window.excluirAula = async function(id){
+await deleteDoc(doc(db,"aulas",id));
+}
+
+onSnapshot(collection(db,"aulas"),(snapshot)=>{
+let html="<tr><th>Data</th><th>Horário</th><th>Aula</th><th>Ação</th></tr>";
+snapshot.forEach(docu=>{
+const d=docu.data();
+html+=`
+<tr>
+<td>${d.data}</td>
+<td>${d.horario}</td>
+<td>${d.nome}</td>
+<td><button onclick="excluirAula('${docu.id}')">Excluir</button></td>
+</tr>
+`;
+});
+tabelaCompleta.innerHTML=html;
+});
+
+onSnapshot(collection(db,"pontos"),(snapshot)=>{
+let html="";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`<p>${d.email} - ${d.tipo} - ${d.data}</p>`;
+});
+historico.innerHTML=html;
+});
+
+onSnapshot(collection(db,"relatorios"),(snapshot)=>{
+let html="";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`<p>${d.email} - ${d.data} - 👍 ${d.like||0} 👎 ${d.dislike||0}</p>`;
+});
+listaRelatorios.innerHTML=html;
+});
+
+onSnapshot(collection(db,"calendario"),(snapshot)=>{
+let html="";
+snapshot.forEach(doc=>{
+const d=doc.data();
+html+=`<p>${d.usuario} - ${d.data} - ${d.evento}</p>`;
+});
+listaCalendario.innerHTML=html;
+});
+
+</script>
+</body>
+</html>
